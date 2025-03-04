@@ -3,13 +3,39 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth.models import User
-from .models import Item, UserProfile
-from .serializers import ItemSerializer, UserSerializer, RegisterSerializer
+from django.shortcuts import get_object_or_404
+from .models import Item, UserProfile, Policy, MedicalHistory, Claim, Document
+from .serializers import (ItemSerializer, UserSerializer, RegisterSerializer,
+                         PolicySerializer, MedicalHistorySerializer, ClaimSerializer, DocumentSerializer)
 
 # Create a viewset for the Item model
 class ItemViewSet(viewsets.ModelViewSet):
     queryset = Item.objects.all()
     serializer_class = ItemSerializer
+
+# Create a viewset for the Policy model
+class PolicyViewSet(viewsets.ModelViewSet):
+    serializer_class = PolicySerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return Policy.objects.filter(user=self.request.user)
+
+# Create a viewset for the MedicalHistory model
+class MedicalHistoryViewSet(viewsets.ModelViewSet):
+    serializer_class = MedicalHistorySerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return MedicalHistory.objects.filter(user=self.request.user)
+
+# Create a viewset for the Claim model
+class ClaimViewSet(viewsets.ModelViewSet):
+    serializer_class = ClaimSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return Claim.objects.filter(user=self.request.user)
 
 # Create a simple API view for testing
 @api_view(['GET'])
@@ -21,6 +47,10 @@ def api_overview(request):
         'Refresh Token': '/auth/token/refresh/',
         'User Profile': '/auth/profile/',
         'Items': '/items/',
+        'Policies': '/policies/',
+        'Medical History': '/medical-history/',
+        'Claims': '/claims/',
+        'Claim Detail': '/claims/<id>/',
     }
     return Response(api_urls)
 
@@ -37,3 +67,11 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     
     def get_object(self):
         return self.request.user
+
+# Specific claim detail view
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def claim_detail(request, pk):
+    claim = get_object_or_404(Claim, id=pk, user=request.user)
+    serializer = ClaimSerializer(claim)
+    return Response(serializer.data)

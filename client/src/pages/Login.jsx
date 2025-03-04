@@ -22,11 +22,29 @@ function Login() {
     setIsLoading(true)
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Make real API call to authenticate with backend
+      const response = await fetch('http://localhost:8000/api/auth/login/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: values.email,
+          password: values.password
+        })
+      })
       
-      // In a real app, you would authenticate with your backend here
-      console.log('Login values:', values)
+      if (!response.ok) {
+        throw new Error(`Authentication failed: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      
+      // Store token in localStorage
+      localStorage.setItem('token', data.access)
+      if (data.refresh) {
+        localStorage.setItem('refreshToken', data.refresh)
+      }
       
       // Set the user in auth context
       login({ email: values.email })

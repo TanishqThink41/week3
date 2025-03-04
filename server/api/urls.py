@@ -5,6 +5,9 @@ from . import views
 
 router = DefaultRouter()
 router.register(r'items', views.ItemViewSet)
+router.register(r'policies', views.PolicyViewSet, basename='policy')
+router.register(r'medical-history', views.MedicalHistoryViewSet, basename='medicalhistory')
+router.register(r'claims', views.ClaimViewSet, basename='claim')
 
 urlpatterns = [
     path('', views.api_overview, name='api-overview'),
@@ -15,4 +18,7 @@ urlpatterns = [
     path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/profile/', views.UserProfileView.as_view(), name='user_profile'),
+    
+    # Claims URLs
+    path('claims/<int:pk>/detail/', views.claim_detail, name='claim_detail'),
 ]

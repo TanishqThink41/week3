@@ -11,57 +11,79 @@ function Dashboard() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Simulate API call to fetch user's data
+    // Fetch user's data from the API
     const fetchUserData = async () => {
       try {
-        // In a real app, you would fetch from your backend
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        setIsLoading(true)
         
-        // Mock data
-        const mockData = {
-          policies: [
-            {
-              id: '1',
-              policy_number: 'POL-001-2025',
-              coverage_details: ['Hospitalization', 'Surgery', 'Consultation'],
-              exclusions: ['Cosmetic Surgery', 'Pre-existing conditions'],
-              start_date: '2025-01-01',
-              end_date: '2026-01-01'
-            }
-          ],
-          medicalHistory: [
-            {
-              id: '1',
-              condition: 'Hypertension',
-              diagnosis_date: '2023-05-15',
-              treatment: 'Medication, lifestyle changes'
-            },
-            {
-              id: '2',
-              condition: 'Type 2 Diabetes',
-              diagnosis_date: '2021-11-20',
-              treatment: 'Insulin, diet management'
-            }
-          ],
-          claims: [
-            {
-              id: '1',
-              treatment: 'Emergency Appendectomy',
-              treatment_date: '2025-04-10',
-              status: 'pending',
-              cause: 'Acute Appendicitis'
-            },
-            {
-              id: '2',
-              treatment: 'Dental Cleaning',
-              treatment_date: '2025-05-15',
-              status: 'approved',
-              cause: 'Routine Checkup'
-            }
-          ]
+        // Get the token from localStorage
+        const token = localStorage.getItem('token')
+        if (!token) {
+          console.error('No authentication token found')
+          setIsLoading(false)
+          return
         }
         
-        setUserData(mockData)
+        // Fetch claims from the API
+        const claimsResponse = await fetch('http://localhost:8000/api/claims/', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        // Fetch policies from the API
+        const policiesResponse = await fetch('http://localhost:8000/api/policies/', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        // Fetch medical history from the API
+        const medicalHistoryResponse = await fetch('http://localhost:8000/api/medical-history/', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        // Initialize data arrays
+        let claimsData = []
+        let policiesData = []
+        let medicalHistoryData = []
+        
+        // Process claims response
+        if (claimsResponse.ok) {
+          claimsData = await claimsResponse.json()
+        } else {
+          console.error(`API error fetching claims: ${claimsResponse.status}`)
+        }
+        
+        // Process policies response
+        if (policiesResponse.ok) {
+          policiesData = await policiesResponse.json()
+        } else {
+          console.error(`API error fetching policies: ${policiesResponse.status}`)
+        }
+        
+        // Process medical history response
+        if (medicalHistoryResponse.ok) {
+          medicalHistoryData = await medicalHistoryResponse.json()
+        } else {
+          console.error(`API error fetching medical history: ${medicalHistoryResponse.status}`)
+        }
+        
+        const userData = {
+          policies: policiesData,
+          medicalHistory: medicalHistoryData,
+          claims: claimsData
+        }
+        
+        setUserData(userData)
       } catch (error) {
         console.error('Error fetching user data:', error)
       } finally {
@@ -137,17 +159,27 @@ function Dashboard() {
                   <div>
                     <h3 className="text-gray-600 mb-2">Coverage Details:</h3>
                     <ul className="list-disc list-inside space-y-1">
-                      {policy.coverage_details.map((item, index) => (
-                        <li key={index} className="text-gray-800">{item}</li>
-                      ))}
+                      {policy.coverage_details && typeof policy.coverage_details === 'object' ? (
+                        Object.entries(policy.coverage_details).map(([key, value], index) => (
+                          <li key={index} className="text-gray-800">{key}: {value}</li>
+                        ))
+                      ) : (
+                        <li className="text-gray-800">No coverage details available</li>
+                      )}
                     </ul>
                   </div>
                   <div>
                     <h3 className="text-gray-600 mb-2">Exclusions:</h3>
                     <ul className="list-disc list-inside space-y-1">
-                      {policy.exclusions.map((item, index) => (
-                        <li key={index} className="text-gray-800">{item}</li>
-                      ))}
+                      {policy.exclusions && typeof policy.exclusions === 'object' ? (
+                        Object.entries(policy.exclusions).map(([key, value], index) => (
+                          <li key={index} className="text-gray-800">
+                            {key}: {Array.isArray(value) ? value.join(', ') : value}
+                          </li>
+                        ))
+                      ) : (
+                        <li className="text-gray-800">No exclusions available</li>
+                      )}
                     </ul>
                   </div>
                   <div className="flex justify-between items-center">
@@ -195,7 +227,7 @@ function Dashboard() {
                           <div className="text-sm font-medium text-gray-900">{record.condition}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">{new Date(record.diagnosis_date).toLocaleDateString()}</div>
+                          <div className="text-sm text-gray-500">{record.diagnosis_date ? new Date(record.diagnosis_date).toLocaleDateString() : 'N/A'}</div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-900">{record.treatment}</div>

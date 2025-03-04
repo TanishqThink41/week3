@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { FaBars, FaTimes, FaUser } from 'react-icons/fa'
 import { useAuth } from '../context/AuthContext'
+import Button from '../components/common/Button'
 
 function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
@@ -23,21 +24,21 @@ function Navbar() {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link to="/" className="flex-shrink-0 flex items-center">
-              <span className="text-primary-600 font-bold text-xl">ClaimGenie</span>
+              <span className="text-primary-600 font-bold text-2xl">ClaimGenie</span>
             </Link>
           </div>
           
           {/* Desktop menu */}
           <div className="hidden md:flex md:items-center md:space-x-4">
-            <Link to="/" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-primary-600">
-              Home
-            </Link>
             {user ? (
               <>
-                <Link to="/dashboard" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-primary-600">
+            <Link to="/" className="px-3 py-2 rounded-md text-md font-medium text-gray-700 hover:text-primary-600">
+              Home
+            </Link>
+                <Link to="/dashboard" className="px-3 py-2 rounded-md text-md font-medium text-gray-700 hover:text-primary-600">
                   Dashboard
                 </Link>
-                <Link to="/new-claim" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-primary-600">
+                <Link to="/new-claim" className="px-3 py-2 rounded-md text-md font-medium text-gray-700 hover:text-primary-600">
                   New Claim
                 </Link>
                 <button
@@ -49,12 +50,7 @@ function Navbar() {
               </>
             ) : (
               <>
-                <Link to="/login" className="btn btn-outline">
-                  Login
-                </Link>
-                <Link to="/register" className="ml-4 btn btn-primary">
-                  Sign Up
-                </Link>
+                
               </>
             )}
           </div>

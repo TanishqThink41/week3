@@ -8,77 +8,51 @@ function ClaimDetails() {
   const [isLoading, setIsLoading] = useState(true)
   
   useEffect(() => {
-    // Simulate API call to fetch claim details
+    // Fetch claim details from the API
     const fetchClaimDetails = async () => {
       try {
-        // In a real app, you would fetch from your backend
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        setIsLoading(true)
         
-        // Mock data based on ID
-        const mockClaim = {
-          id,
-          type: id === '1' ? 'Auto Insurance' : id === '2' ? 'Home Insurance' : 'Health Insurance',
-          date: id === '1' ? '2025-03-15' : id === '2' ? '2025-02-28' : '2025-01-10',
-          status: id === '1' ? 'approved' : id === '2' ? 'pending' : 'rejected',
-          amount: id === '1' ? 1250.00 : id === '2' ? 3500.00 : 750.00,
-          description: id === '1' 
-            ? 'Fender bender in parking lot' 
-            : id === '2' 
-              ? 'Water damage from broken pipe' 
-              : 'Emergency room visit',
-          policyNumber: `POL-${100000 + parseInt(id)}`,
-          policyProvider: id === '1' ? 'State Farm' : id === '2' ? 'Allstate' : 'Blue Cross',
-          policyHolderName: 'John Doe',
-          incidentDate: id === '1' ? '2025-03-10' : id === '2' ? '2025-02-25' : '2025-01-08',
-          incidentDescription: id === '1' 
-            ? 'While parked at the grocery store, another vehicle backed into my front bumper causing damage.' 
-            : id === '2' 
-              ? 'A pipe burst in the upstairs bathroom causing water damage to the ceiling and walls of the downstairs living room.' 
-              : 'Experienced severe abdominal pain and went to the emergency room for treatment.',
-          claimDetails: id === '1'
-            ? 'Damage to front bumper and headlight. Repair estimate from authorized body shop attached.'
-            : id === '2'
-              ? 'Water damage affected ceiling, walls, and flooring in living room. Professional restoration service assessment attached.'
-              : 'Diagnosed with appendicitis. Emergency surgery performed. Hospital bill and doctor\'s notes attached.',
-          timeline: [
-            {
-              date: id === '1' ? '2025-03-15' : id === '2' ? '2025-02-28' : '2025-01-10',
-              action: 'Claim submitted',
-              actor: 'You'
-            },
-            {
-              date: id === '1' ? '2025-03-16' : id === '2' ? '2025-03-01' : '2025-01-11',
-              action: 'Claim received and under review',
-              actor: 'Insurance Company'
-            },
-            ...(id === '1' ? [
-              {
-                date: '2025-03-18',
-                action: 'Claim approved',
-                actor: 'Insurance Company'
-              },
-              {
-                date: '2025-03-20',
-                action: 'Payment processed',
-                actor: 'Insurance Company'
-              }
-            ] : id === '2' ? [
-              {
-                date: '2025-03-05',
-                action: 'Additional documentation requested',
-                actor: 'Insurance Company'
-              }
-            ] : [
-              {
-                date: '2025-01-15',
-                action: 'Claim rejected - Service not covered under current plan',
-                actor: 'Insurance Company'
-              }
-            ])
-          ]
+        // Get the token from localStorage
+        const token = localStorage.getItem('token')
+        if (!token) {
+          console.error('No authentication token found')
+          setIsLoading(false)
+          return
         }
         
-        setClaim(mockClaim)
+        const response = await fetch(`http://localhost:8000/api/claims/${id}/detail/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`)
+        }
+        
+        const claimData = await response.json()
+        
+        // Transform API data to match the component's expected format
+        const transformedClaim = {
+          id: claimData.id,
+          type: 'Auto Insurance', // This would come from the policy type
+          date: new Date(claimData.created_at).toISOString().split('T')[0],
+          status: claimData.status,
+          amount: 1250.00, // This would be calculated or come from a separate field
+          description: claimData.treatment,
+          policyNumber: claimData.policy_number,
+          policyProvider: claimData.policy_provider,
+          policyHolderName: claimData.policy_holder_name,
+          incidentDate: new Date(claimData.incident_date).toISOString().split('T')[0],
+          incidentDescription: claimData.incident_description,
+          claimDetails: claimData.claim_details,
+          timeline: claimData.timeline
+        }
+        
+        setClaim(transformedClaim)
       } catch (error) {
         console.error('Error fetching claim details:', error)
       } finally {

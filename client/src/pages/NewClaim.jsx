@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Formik, Form, Field, ErrorMessage } from 'formik'
 import * as Yup from 'yup'
 import { toast } from 'react-toastify'
 import { FaArrowLeft, FaArrowRight, FaCheck, FaSpinner } from 'react-icons/fa'
+import { useAuth } from '../context/AuthContext'
 
 // Validation schemas for each step
 const stepValidationSchemas = [
@@ -37,7 +38,50 @@ function NewClaim() {
   const [currentStep, setCurrentStep] = useState(0)
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedClaim, setGeneratedClaim] = useState(null)
+  const [policies, setPolicies] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
   const navigate = useNavigate()
+  
+  // Fetch user's policies for the dropdown
+  useEffect(() => {
+    const fetchPolicies = async () => {
+      const token = localStorage.getItem('token')
+      
+      if (!token) {
+        toast.error('Please log in to create a new claim')
+        navigate('/login')
+        return
+      }
+      
+      try {
+        setIsLoading(true)
+        const token = localStorage.getItem('token')
+        
+        const response = await fetch('http://localhost:8000/api/policies/', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          setPolicies(data)
+        } else {
+          console.error(`Error fetching policies: ${response.status}`)
+          toast.error('Failed to load your policies. Please try again.')
+        }
+      } catch (error) {
+        console.error('Error fetching policies:', error)
+        toast.error('Failed to load your policies. Please try again.')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    fetchPolicies()
+  }, [navigate])
   
   const steps = [
     'Insurance Type',
@@ -127,17 +171,47 @@ function NewClaim() {
   
   const handleSubmit = async (values) => {
     try {
-      // Simulate API call to submit claim
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Get authentication token
+      const token = localStorage.getItem('token')
       
-      // In a real app, you would submit to your backend here
-      console.log('Claim submitted:', { ...values, generatedClaim })
+      // Get the selected policy from values.policyNumber
+      const selectedPolicy = policies.find(p => p.policy_number === values.policyNumber)
+      if (!selectedPolicy) {
+        toast.error('Please select a valid policy')
+        return
+      }
+      
+      // Prepare data in the format expected by the backend
+      const claimData = {
+        treatment: values.insuranceType,  // Using insuranceType as treatment
+        treatment_date: new Date(values.incidentDate).toISOString(),  // API expects treatment_date
+        cause: values.incidentDescription, // API expects cause for incident_description
+        policy: selectedPolicy.id  // The policy ID
+      }
+      
+      // Send to backend
+      const response = await fetch('http://localhost:8000/api/claims/', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(claimData)
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Failed to submit claim')
+      }
+      
+      // Get the response data
+      const responseData = await response.json()
       
       toast.success('Claim submitted successfully!')
       navigate('/dashboard')
     } catch (error) {
       console.error('Error submitting claim:', error)
-      toast.error('Failed to submit claim. Please try again.')
+      toast.error(error.message || 'Failed to submit claim. Please try again.')
     }
   }
   
@@ -216,41 +290,57 @@ function NewClaim() {
         return (
           <div>
             <h2 className="text-xl font-semibold mb-4">Policy Information</h2>
-            <div className="form-group">
-              <label htmlFor="policyNumber" className="form-label">Policy Number</label>
-              <Field
-                type="text"
-                name="policyNumber"
-                id="policyNumber"
-                className="input"
-                placeholder="e.g., POL-123456789"
-              />
-              <ErrorMessage name="policyNumber" component="div" className="form-error" />
-            </div>
             
-            <div className="form-group">
-              <label htmlFor="policyProvider" className="form-label">Insurance Provider</label>
-              <Field
-                type="text"
-                name="policyProvider"
-                id="policyProvider"
-                className="input"
-                placeholder="e.g., State Farm, Allstate, etc."
-              />
-              <ErrorMessage name="policyProvider" component="div" className="form-error" />
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="policyHolderName" className="form-label">Policy Holder Name</label>
-              <Field
-                type="text"
-                name="policyHolderName"
-                id="policyHolderName"
-                className="input"
-                placeholder="Full name as it appears on your policy"
-              />
-              <ErrorMessage name="policyHolderName" component="div" className="form-error" />
-            </div>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <FaSpinner className="animate-spin text-primary-600 mr-2" />
+                <span>Loading your policies...</span>
+              </div>
+            ) : policies.length === 0 ? (
+              <div className="text-center py-4">
+                <p className="text-gray-600 mb-2">You don't have any policies yet.</p>
+                <p className="text-sm">Please contact your insurance provider or administrator.</p>
+              </div>
+            ) : (
+              <>
+                <div className="form-group">
+                  <label htmlFor="policyNumber" className="form-label">Select Your Policy</label>
+                  <Field
+                    as="select"
+                    name="policyNumber"
+                    id="policyNumber"
+                    className="input"
+                  >
+                    <option value="">-- Select a policy --</option>
+                    {policies.map((policy) => (
+                      <option key={policy.id} value={policy.policy_number}>
+                        {policy.policy_number} - {Object.keys(policy.coverage_details)[0] || 'Insurance Policy'}
+                      </option>
+                    ))}
+                  </Field>
+                  <ErrorMessage name="policyNumber" component="div" className="form-error" />
+                </div>
+                
+                {values.policyNumber && (
+                  <div className="bg-gray-50 rounded-lg p-4 mt-4">
+                    <h3 className="font-medium text-gray-700 mb-2">Selected Policy Details</h3>
+                    {policies
+                      .filter(p => p.policy_number === values.policyNumber)
+                      .map(policy => (
+                        <div key={policy.id} className="text-sm">
+                          <p><span className="font-medium">Coverage:</span> {Object.entries(policy.coverage_details).map(([key, val]) => `${key}: ${val}`).join(', ')}</p>
+                          <p><span className="font-medium">Valid until:</span> {new Date(policy.end_date).toLocaleDateString()}</p>
+                        </div>
+                      ))
+                    }
+                  </div>
+                )}
+                
+                {/* These fields will be automatically filled based on the selected policy */}
+                <Field type="hidden" name="policyProvider" value="Insurance Provider" />
+                <Field type="hidden" name="policyHolderName" value="Policy Holder" />
+              </>
+            )}
           </div>
         )
       

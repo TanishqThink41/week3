@@ -1,7 +1,11 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { FaRobot, FaClipboardCheck, FaVideo, FaShieldAlt } from 'react-icons/fa'
+import Button from '../components/common/Button'
+import { useAuth } from '../context/AuthContext'
 
 function Home() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
   return (
     <div>
       {/* Hero Section */}
@@ -15,12 +19,8 @@ function Home() {
               ClaimGenie helps you understand your coverage and generate accurate insurance claims in minutes.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <Link to="/register" className="btn bg-white text-primary-700 hover:bg-gray-100 text-lg px-6 py-3">
-                Get Started
-              </Link>
-              <Link to="/login" className="btn bg-transparent border-2 border-white hover:bg-white/10 text-lg px-6 py-3">
-                Sign In
-              </Link>
+              {!user && <Button text="Get Started" primary={true} onclick={() => navigate('/register')}/>}
+              <button className='border-2 border-white text-white hover:bg-white hover:text-primary-700 px-8 py-3 text-lg btn' onClick={() => navigate(user? '/dashboard' : '/login')}>{user? "Go to Dashboard":"Login"}</button>
             </div>
           </div>
         </div>
@@ -142,15 +142,13 @@ function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 bg-secondary-600 text-white">
+      <section className="py-16 bg-primary-600 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold mb-4">Ready to Simplify Your Insurance Claims?</h2>
           <p className="text-xl mb-8 max-w-3xl mx-auto">
             Join thousands of satisfied users who have made their insurance claims process easier with ClaimGenie.
           </p>
-          <Link to="/register" className="btn bg-white text-secondary-700 hover:bg-gray-100 text-lg px-8 py-3">
-            Get Started for Free
-          </Link>
+          <Button text="Get Started for Free" primary={true} onclick={() => navigate('/register')} />
         </div>
       </section>
     </div>

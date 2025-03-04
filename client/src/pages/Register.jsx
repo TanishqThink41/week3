@@ -30,17 +30,33 @@ function Register() {
     setIsLoading(true)
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Register with the backend
+      const response = await fetch('http://localhost:8000/api/auth/register/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: values.email,  // Using email as username
+          email: values.email,
+          password: values.password,
+          password2: values.confirmPassword,
+          first_name: values.firstName,
+          last_name: values.lastName
+        })
+      })
       
-      // In a real app, you would register with your backend here
-      console.log('Register values:', values)
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Registration failed')
+      }
       
-      toast.success('Registration successful!')
-      navigate('/dashboard')
+      // Registration successful
+      toast.success('Registration successful! Please log in.')
+      navigate('/login')  // Redirect to login page instead of dashboard
     } catch (error) {
       console.error('Registration error:', error)
-      toast.error('Registration failed. Please try again.')
+      toast.error(error.message || 'Registration failed. Please try again.')
     } finally {
       setIsLoading(false)
     }
