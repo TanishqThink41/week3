@@ -1,124 +1,156 @@
-import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { FaPlus, FaFileAlt, FaCheckCircle, FaSpinner, FaExclamationTriangle, FaShieldAlt, FaHistory, FaFileMedical } from 'react-icons/fa'
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import {
+  FaPlus,
+  FaFileAlt,
+  FaCheckCircle,
+  FaSpinner,
+  FaExclamationTriangle,
+  FaShieldAlt,
+  FaHistory,
+  FaFileMedical,
+} from "react-icons/fa";
+import { ChevronDownIcon } from '@heroicons/react/24/solid'; 
 
 function Dashboard() {
   const [userData, setUserData] = useState({
     claims: [],
     policies: [],
-    medicalHistory: []
-  })
-  const [isLoading, setIsLoading] = useState(true)
+    medicalHistory: [],
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [openPolicies, setOpenPolicies] = useState([]);
+
+const togglePolicy = (index) => {
+  setOpenPolicies(prev => {
+    const newOpen = [...prev];
+    newOpen[index] = !newOpen[index];
+    return newOpen;
+  });
+};
 
   useEffect(() => {
     // Fetch user's data from the API
     const fetchUserData = async () => {
       try {
-        setIsLoading(true)
-        
+        setIsLoading(true);
+
         // Get the token from localStorage
-        const token = localStorage.getItem('token')
+        const token = localStorage.getItem("token");
         if (!token) {
-          console.error('No authentication token found')
-          setIsLoading(false)
-          return
+          console.error("No authentication token found");
+          setIsLoading(false);
+          return;
         }
-        
+
         // Fetch claims from the API
-        const claimsResponse = await fetch('http://localhost:8000/api/claims/', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+        const claimsResponse = await fetch(
+          "http://localhost:8000/api/claims/",
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
           }
-        })
-        
+        );
+
         // Fetch policies from the API
-        const policiesResponse = await fetch('http://localhost:8000/api/policies/', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+        const policiesResponse = await fetch(
+          "http://localhost:8000/api/policies/",
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
           }
-        })
-        
+        );
+
         // Fetch medical history from the API
-        const medicalHistoryResponse = await fetch('http://localhost:8000/api/medical-history/', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+        const medicalHistoryResponse = await fetch(
+          "http://localhost:8000/api/medical-history/",
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
           }
-        })
-        
+        );
+
         // Initialize data arrays
-        let claimsData = []
-        let policiesData = []
-        let medicalHistoryData = []
-        
+        let claimsData = [];
+        let policiesData = [];
+        let medicalHistoryData = [];
+
         // Process claims response
         if (claimsResponse.ok) {
-          claimsData = await claimsResponse.json()
+          claimsData = await claimsResponse.json();
         } else {
-          console.error(`API error fetching claims: ${claimsResponse.status}`)
+          console.error(`API error fetching claims: ${claimsResponse.status}`);
         }
-        
+
         // Process policies response
         if (policiesResponse.ok) {
-          policiesData = await policiesResponse.json()
+          policiesData = await policiesResponse.json();
         } else {
-          console.error(`API error fetching policies: ${policiesResponse.status}`)
+          console.error(
+            `API error fetching policies: ${policiesResponse.status}`
+          );
         }
-        
+
         // Process medical history response
         if (medicalHistoryResponse.ok) {
-          medicalHistoryData = await medicalHistoryResponse.json()
+          medicalHistoryData = await medicalHistoryResponse.json();
         } else {
-          console.error(`API error fetching medical history: ${medicalHistoryResponse.status}`)
+          console.error(
+            `API error fetching medical history: ${medicalHistoryResponse.status}`
+          );
         }
-        
+
         const userData = {
           policies: policiesData,
           medicalHistory: medicalHistoryData,
-          claims: claimsData
-        }
-        
-        setUserData(userData)
+          claims: claimsData,
+        };
+
+        setUserData(userData);
       } catch (error) {
-        console.error('Error fetching user data:', error)
+        console.error("Error fetching user data:", error);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
-    
-    fetchUserData()
-  }, [])
+    };
+
+    fetchUserData();
+  }, []);
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'approved':
-        return <FaCheckCircle className="text-green-500" />
-      case 'pending':
-        return <FaSpinner className="text-yellow-500" />
-      case 'rejected':
-        return <FaExclamationTriangle className="text-red-500" />
+      case "approved":
+        return <FaCheckCircle className="text-green-500" />;
+      case "pending":
+        return <FaSpinner className="text-yellow-500" />;
+      case "rejected":
+        return <FaExclamationTriangle className="text-red-500" />;
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'approved':
-        return 'Approved'
-      case 'pending':
-        return 'Pending'
-      case 'rejected':
-        return 'Rejected'
+      case "approved":
+        return "Approved";
+      case "pending":
+        return "Pending";
+      case "rejected":
+        return "Rejected";
       default:
-        return status
+        return status;
     }
-  }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -143,14 +175,14 @@ function Dashboard() {
       ) : (
         <div className="grid grid-cols-1 gap-6">
           {/* Policy Information */}
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          {/* <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="p-6">
               <div className="flex items-center mb-4">
                 <FaShieldAlt className="text-primary-600 text-xl mr-2" />
-                <h2 className="text-xl font-semibold">Your Policy</h2>
+                <h2 className="text-xl font-semibold">Your Policies</h2>
               </div>
-              
-              {userData.policies.map(policy => (
+
+              {userData.policies.map((policy) => (
                 <div key={policy.id} className="space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Policy Number:</span>
@@ -159,43 +191,167 @@ function Dashboard() {
                   <div>
                     <h3 className="text-gray-600 mb-2">Coverage Details:</h3>
                     <ul className="list-disc list-inside space-y-1">
-                      {policy.coverage_details && typeof policy.coverage_details === 'object' ? (
-                        Object.entries(policy.coverage_details).map(([key, value], index) => (
-                          <li key={index} className="text-gray-800">{key}: {value}</li>
-                        ))
+                      {policy.coverage_details &&
+                      typeof policy.coverage_details === "object" ? (
+                        // In Dashboard.jsx - Update the policy coverage rendering
+                        Object.entries(policy.coverage_details).map(
+                          ([policyType, coverageItems]) => (
+                            <div key={policyType} className="mb-2">
+                              <h4 className="font-medium text-gray-700">
+                                {policyType}
+                              </h4>
+                              <ul className="list-disc pl-4">
+                                {Object.entries(coverageItems).map(
+                                  ([coverageKey, coverageValue]) => (
+                                    <li
+                                      key={coverageKey}
+                                      className="text-gray-800"
+                                    >
+                                      {coverageKey}: {coverageValue}
+                                    </li>
+                                  )
+                                )}
+                              </ul>
+                            </div>
+                          )
+                        )
                       ) : (
-                        <li className="text-gray-800">No coverage details available</li>
+                        <li className="text-gray-800">
+                          No coverage details available
+                        </li>
                       )}
                     </ul>
                   </div>
                   <div>
                     <h3 className="text-gray-600 mb-2">Exclusions:</h3>
                     <ul className="list-disc list-inside space-y-1">
-                      {policy.exclusions && typeof policy.exclusions === 'object' ? (
-                        Object.entries(policy.exclusions).map(([key, value], index) => (
-                          <li key={index} className="text-gray-800">
-                            {key}: {Array.isArray(value) ? value.join(', ') : value}
-                          </li>
-                        ))
+                      {policy.exclusions &&
+                      typeof policy.exclusions === "object" ? (
+                        Object.entries(policy.exclusions).map(
+                          ([key, value], index) => (
+                            <li key={index} className="text-gray-800">
+                              {key}:{" "}
+                              {Array.isArray(value) ? value.join(", ") : value}
+                            </li>
+                          )
+                        )
                       ) : (
-                        <li className="text-gray-800">No exclusions available</li>
+                        <li className="text-gray-800">
+                          No exclusions available
+                        </li>
                       )}
                     </ul>
                   </div>
                   <div className="flex justify-between items-center">
                     <div>
                       <span className="text-gray-600">Start Date:</span>
-                      <span className="ml-2">{new Date(policy.start_date).toLocaleDateString()}</span>
+                      <span className="ml-2">
+                        {new Date(policy.start_date).toLocaleDateString()}
+                      </span>
                     </div>
                     <div>
                       <span className="text-gray-600">End Date:</span>
-                      <span className="ml-2">{new Date(policy.end_date).toLocaleDateString()}</span>
+                      <span className="ml-2">
+                        {new Date(policy.end_date).toLocaleDateString()}
+                      </span>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          </div> */}
+<div className="bg-white rounded-lg shadow-sm border border-gray-200">
+  <div className="p-6">
+    <div className="flex items-center mb-6">
+      <FaShieldAlt className="text-primary-600 text-xl mr-2" />
+      <h2 className="text-2xl font-bold text-gray-800">Your Insurance Policies</h2>
+    </div>
+
+    <div className="space-y-4">
+      {userData.policies.map((policy, index) => (
+        <div key={policy.id} className="border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+          <button
+            onClick={() => togglePolicy(index)}
+            className="w-full px-4 py-3 flex justify-between items-center bg-primary-600 hover:bg-primary-700 text-white rounded-t-lg"
+          >
+            <div className="text-left">
+              <h3 className="font-bold text-lg">Policy #{policy.policy_number}</h3>
+              <p className="text-sm opacity-90">
+                {Object.keys(policy.coverage_details)[0]} •{' '}
+                {new Date(policy.end_date).toLocaleDateString()}
+              </p>
+            </div>
+            <ChevronDownIcon
+              className={`w-5 h-5 transform transition-transform ${
+                openPolicies[index] ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+
+          {openPolicies[index] && (
+            <div className="p-4 bg-white border-t">
+              <div className="space-y-4">
+                {/* Coverage Details */}
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-blue-800 mb-2 text-lg">
+                    <FaFileMedical className="inline mr-2" />
+                    Coverage Details
+                  </h4>
+                  <ul className="space-y-2 pl-4">
+                    {Object.entries(policy.coverage_details).map(([policyType, coverageItems]) => (
+                      <div key={policyType} className="mb-3">
+                        <h5 className="font-medium text-blue-700">{policyType}</h5>
+                        <ul className="list-disc pl-4">
+                          {Object.entries(coverageItems).map(([key, value]) => (
+                            <li key={key} className="text-gray-700">
+                              <span className="font-medium">{key}:</span> {value}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Exclusions */}
+                <div className="bg-red-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-red-800 mb-2 text-lg">
+                    <FaExclamationTriangle className="inline mr-2" />
+                    Exclusions
+                  </h4>
+                  <ul className="list-disc pl-4 space-y-2">
+                    {Object.entries(policy.exclusions).map(([exclusionType, items]) => (
+                      <li key={exclusionType} className="text-gray-700">
+                        <span className="font-medium">{exclusionType}:</span>{' '}
+                        {Array.isArray(items) ? items.join(', ') : items}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Policy Dates */}
+                <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Start Date</p>
+                    <p className="font-semibold text-gray-800">
+                      {new Date(policy.start_date).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">End Date</p>
+                    <p className="font-semibold text-gray-800">
+                      {new Date(policy.end_date).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  </div>
+</div>
 
           {/* Medical History */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -204,18 +360,27 @@ function Dashboard() {
                 <FaHistory className="text-primary-600 text-xl mr-2" />
                 <h2 className="text-xl font-semibold">Medical History</h2>
               </div>
-              
+
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
                         Condition
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
                         Diagnosis Date
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
                         Treatment
                       </th>
                     </tr>
@@ -224,13 +389,23 @@ function Dashboard() {
                     {userData.medicalHistory.map((record) => (
                       <tr key={record.id}>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{record.condition}</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {record.condition}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">{record.diagnosis_date ? new Date(record.diagnosis_date).toLocaleDateString() : 'N/A'}</div>
+                          <div className="text-sm text-gray-500">
+                            {record.diagnosis_date
+                              ? new Date(
+                                  record.diagnosis_date
+                                ).toLocaleDateString()
+                              : "N/A"}
+                          </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">{record.treatment}</div>
+                          <div className="text-sm text-gray-900">
+                            {record.treatment}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -247,11 +422,13 @@ function Dashboard() {
                 <FaFileMedical className="text-primary-600 text-xl mr-2" />
                 <h2 className="text-xl font-semibold">Recent Claims</h2>
               </div>
-          
+
               {userData.claims.length === 0 ? (
                 <div className="text-center py-8">
                   <FaFileAlt className="mx-auto text-gray-400 text-4xl mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No claims yet</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    No claims yet
+                  </h3>
                   <p className="text-gray-600 mb-4">
                     You haven't submitted any insurance claims yet.
                   </p>
@@ -264,19 +441,34 @@ function Dashboard() {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
                           Treatment
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
                           Date
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
                           Cause
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
                           Status
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
                           Actions
                         </th>
                       </tr>
@@ -285,22 +477,35 @@ function Dashboard() {
                       {userData.claims.map((claim) => (
                         <tr key={claim.id}>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{claim.treatment}</div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {claim.treatment}
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-500">{new Date(claim.treatment_date).toLocaleDateString()}</div>
+                            <div className="text-sm text-gray-500">
+                              {new Date(
+                                claim.treatment_date
+                              ).toLocaleDateString()}
+                            </div>
                           </td>
                           <td className="px-6 py-4">
-                            <div className="text-sm text-gray-900">{claim.cause}</div>
+                            <div className="text-sm text-gray-900">
+                              {claim.cause}
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               {getStatusIcon(claim.status)}
-                              <span className="ml-2 text-sm text-gray-700">{getStatusText(claim.status)}</span>
+                              <span className="ml-2 text-sm text-gray-700">
+                                {getStatusText(claim.status)}
+                              </span>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <Link to={`/claims/${claim.id}`} className="text-primary-600 hover:text-primary-900">
+                            <Link
+                              to={`/claims/${claim.id}`}
+                              className="text-primary-600 hover:text-primary-900"
+                            >
                               View Details
                             </Link>
                           </td>
@@ -314,10 +519,10 @@ function Dashboard() {
           </div>
         </div>
       )}
-        </div>
-      // </div>
+    </div>
     // </div>
-  )
+    // </div>
+  );
 }
 
-export default Dashboard
+export default Dashboard;
