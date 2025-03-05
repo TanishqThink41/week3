@@ -54,18 +54,43 @@ class ClaimSerializer(serializers.ModelSerializer):
     incident_description = serializers.CharField(source='cause', required=False)
     claim_details = serializers.SerializerMethodField()
     timeline = serializers.SerializerMethodField()
-    
+
+    # Accept writable fields for document data (if using as before)
+    document_url = serializers.CharField(write_only=True, required=False)
+    document_type = serializers.CharField(write_only=True, required=False)
+
+    # Add treatment_money as a writable field
+    treatment_money = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+
     class Meta:
         model = Claim
-        fields = ['id', 'treatment', 'treatment_date', 'cause', 'status', 'created_at', 'updated_at',
-                  'documents', 'policy_number', 'policy_provider', 'policy_holder_name', 
-                  'incident_date', 'incident_description', 'claim_details', 'timeline', 'policy']
+        fields = [
+            'id', 'treatment', 'treatment_date', 'cause', 'status', 'created_at', 'updated_at',
+            'documents', 'policy_number', 'policy_provider', 'policy_holder_name', 
+            'incident_date', 'incident_description', 'claim_details', 'timeline', 'policy',
+            'document_url', 'document_type', 'treatment_money'
+        ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'documents', 'policy_number', 
-                           'policy_provider', 'policy_holder_name', 'claim_details', 'timeline']
-    
+                            'policy_provider', 'policy_holder_name', 'claim_details', 'timeline']
+
+    def create(self, validated_data):
+        # Pop out document information
+        document_url = validated_data.pop('document_url', None)
+        document_type = validated_data.pop('document_type', 'Default Type')
+        
+        # Create the Claim instance – treatment_money will be saved automatically if present
+        claim = Claim.objects.create(**validated_data)
+        
+        # If document_url is provided, create a Document instance related to the claim
+        if document_url:
+            Document.objects.create(
+                document_type=document_type,
+                file_path=document_url,
+                claim=claim
+            )
+        return claim
+
     def get_policy_provider(self, obj):
-        # This would typically come from policy.provider or similar field
-        # For now returning a placeholder
         return "Health Insurance Provider"
     
     def get_policy_holder_name(self, obj):
@@ -78,44 +103,30 @@ class ClaimSerializer(serializers.ModelSerializer):
         import datetime
         from django.utils import timezone
         
-        # Start with the actual submission date
         submission_date = obj.created_at
-        
-        timeline = [
-            {
-                'date': submission_date.strftime('%Y-%m-%d'),
-                'action': 'Claim submitted',
-                'actor': 'You',
-                'completed': True
-            },
-        ]
-        
-        # Review typically happens 1 day after submission
+        timeline = [{
+            'date': submission_date.strftime('%Y-%m-%d'),
+            'action': 'Claim submitted',
+            'actor': 'You',
+            'completed': True
+        }]
+
         review_date = submission_date + datetime.timedelta(days=1)
-        review_completed = True  # Review is always completed
-        
         timeline.append({
             'date': review_date.strftime('%Y-%m-%d'),
             'action': 'Claim received and under review',
             'actor': 'Insurance Company',
-            'completed': review_completed
+            'completed': True
         })
-        
-        # Decision date is typically 3 days after submission
+
         decision_date = submission_date + datetime.timedelta(days=3)
-        
-        # If the claim has been updated (decision made), use that date instead
         if obj.updated_at and obj.updated_at > submission_date and (obj.status == 'approved' or obj.status == 'rejected'):
             decision_date = obj.updated_at
             decision_completed = True
         else:
-            # If decision date is in the future, show future date
             now = timezone.now()
             decision_completed = decision_date <= now
-            if not decision_completed:
-                # For pending decisions in the future, use the expected date
-                pass
-        
+
         if obj.status == 'approved':
             timeline.append({
                 'date': decision_date.strftime('%Y-%m-%d'),
@@ -123,16 +134,12 @@ class ClaimSerializer(serializers.ModelSerializer):
                 'actor': 'Insurance Company',
                 'completed': decision_completed
             })
-            
-            # Payment processed 2 days after approval
             payment_date = decision_date + datetime.timedelta(days=2)
-            payment_completed = payment_date <= timezone.now()
-            
             timeline.append({
                 'date': payment_date.strftime('%Y-%m-%d'),
                 'action': 'Payment processed',
                 'actor': 'Insurance Company',
-                'completed': payment_completed
+                'completed': payment_date <= timezone.now()
             })
         elif obj.status == 'rejected':
             timeline.append({
@@ -146,9 +153,8 @@ class ClaimSerializer(serializers.ModelSerializer):
                 'date': decision_date.strftime('%Y-%m-%d'),
                 'action': 'Claim decision pending',
                 'actor': 'Insurance Company',
-                'completed': False  # Always false for pending
+                'completed': False
             })
-        
         return timeline
 
 class PolicySerializer(serializers.ModelSerializer):

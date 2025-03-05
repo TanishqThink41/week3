@@ -16,7 +16,7 @@ function NewClaim() {
   const [completedClaim, setCompletedClaim] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch policies when component mounts.
+  // Fetch policies on component mount.
   useEffect(() => {
     const fetchPolicies = async () => {
       const token = localStorage.getItem("token");
@@ -53,7 +53,7 @@ function NewClaim() {
     fetchPolicies();
   }, [navigate]);
 
-  // When a policy is selected, save it into state.
+  // Set the selected policy.
   const handlePolicySelect = (e) => {
     const policyNumber = e.target.value;
     const policy = policies.find((p) => p.policy_number === policyNumber);
@@ -63,7 +63,7 @@ function NewClaim() {
     }
   };
 
-  // Get the completed claim from the chatbot.
+  // Receive the completed claim from the chatbot.
   const handleClaimComplete = (claimData) => {
     console.log("Claim completed:", claimData);
     setCompletedClaim({
@@ -85,14 +85,12 @@ function NewClaim() {
       treatmentDescription: "Treatment description",
       hospitalDetails: "Hospital details",
       incidentDate: "Incident date",
-      treatmentDate: "Treatment date", // new field added
+      treatmentDate: "Treatment date",
     };
 
     const missingFields = [];
     for (const [field, label] of Object.entries(requiredFields)) {
-      if (!completedClaim[field]) {
-        missingFields.push(label);
-      }
+      if (!completedClaim[field]) missingFields.push(label);
     }
     if (missingFields.length > 0) {
       toast.error(`Please provide the following information: ${missingFields.join(", ")}`);
@@ -102,8 +100,7 @@ function NewClaim() {
     setIsSubmitting(true);
     try {
       const token = localStorage.getItem("token");
-      // Prepare claim data for submission.
-      // Convert incident and treatment dates to ISO format if needed.
+      // Convert dates into ISO format.
       const formattedIncidentDate = new Date(completedClaim.incidentDate).toISOString();
       const formattedTreatmentDate = new Date(completedClaim.treatmentDate).toISOString();
 
@@ -138,7 +135,7 @@ function NewClaim() {
         const result = await response.json();
         console.log("Claim submission successful:", result);
         toast.success("Claim submitted successfully!");
-        navigate("/claims");
+        navigate("/dashboard");
       } else {
         const errorData = await response.json();
         console.error("Error submitting claim:", errorData);
@@ -152,7 +149,7 @@ function NewClaim() {
     }
   };
 
-  // Allow user to return to policy selection.
+  // Allow user to go back to policy selection.
   const handleBackToSelection = () => {
     setSelectedPolicy(null);
     setCompletedClaim(null);
@@ -195,7 +192,7 @@ function NewClaim() {
                 </option>
                 {policies.map((policy) => (
                   <option key={policy.id} value={policy.policy_number}>
-                    {policy.policy_number}
+                    {policy.policy_number} - {policy.provider_name}
                   </option>
                 ))}
               </select>
@@ -226,9 +223,7 @@ function NewClaim() {
         <div className="p-4 bg-primary-50 border-b border-primary-100">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-lg font-semibold text-primary-800">
-                {selectedPolicy.provider_name}
-              </h2>
+              <h2 className="text-lg font-semibold text-primary-800">{selectedPolicy.provider_name}</h2>
               <p className="text-sm text-gray-600">
                 Policy #{selectedPolicy.policy_number} |{" "}
                 {selectedPolicy.coverage_details &&
@@ -244,7 +239,7 @@ function NewClaim() {
                 rel="noopener noreferrer"
                 className="text-primary-600 hover:text-primary-800 flex items-center"
               >
-                <FaFilePdf className="mr-1 text-3xl" />{" "}
+                <FaFilePdf className="mr-1 text-3xl" />
                 <p className="text-sm">View Policy Document</p>
               </a>
             )}
@@ -253,10 +248,7 @@ function NewClaim() {
         <div className="p-6">
           {!completedClaim ? (
             <div className="h-[500px]">
-              <ClaimChatbot
-                onClaimComplete={handleClaimComplete}
-                initialPolicyData={selectedPolicy}
-              />
+              <ClaimChatbot onClaimComplete={handleClaimComplete} initialPolicyData={selectedPolicy} />
             </div>
           ) : (
             <div className="space-y-4">

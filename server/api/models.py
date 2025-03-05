@@ -59,6 +59,7 @@ class Claim(models.Model):
     policy = models.ForeignKey(Policy, on_delete=models.CASCADE, related_name='claims')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    treatment_money = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     
     def __str__(self):
         return f"Claim {self.id} for {self.user.username}"

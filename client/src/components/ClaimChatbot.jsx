@@ -2,41 +2,56 @@
 
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
+import { uploadFileToCloudinary } from "../utils/cloudinary";  // Ensure this file exists
 
 function ClaimChatbot({ onClaimComplete, initialPolicyData }) {
-  // State to track conversation step
+  // Track the current conversation step.
   const [step, setStep] = useState(0);
 
-  // Fields for claim data
+  // State for claim fields.
   const [customerName, setCustomerName] = useState("");
   const [incidentDate, setIncidentDate] = useState("");
-  const [treatmentDate, setTreatmentDate] = useState(""); // new field
+  const [treatmentDate, setTreatmentDate] = useState("");
   const [incidentDescription, setIncidentDescription] = useState("");
   const [treatmentDescription, setTreatmentDescription] = useState("");
   const [treatmentAmount, setTreatmentAmount] = useState("");
   const [coverageCheck, setCoverageCheck] = useState("");
   const [hospitalDetails, setHospitalDetails] = useState("");
   const [doctorDetails, setDoctorDetails] = useState("");
-  
-  // Chatbot prompt and loading states.
+  // New state for supporting document URL.
+  const [supportingDocUrl, setSupportingDocUrl] = useState("");
+
+  // Prompt message and loading state.
   const [chatbotPrompt, setChatbotPrompt] = useState("");
   const [loadingPrompt, setLoadingPrompt] = useState(false);
 
-  // Steps (order matters)
+  // Define steps (order matters):
+  // 0. Customer name
+  // 1. Incident date
+  // 2. Treatment date
+  // 3. Incident description
+  // 4. Treatment description
+  // 5. Treatment money amount (claim amount)
+  // 6. Policy coverage check (simulated Gemini API call)
+  // 7. Hospital details
+  // 8. Doctor details
+  // 9. Supporting document upload
+  // 10. Generating claim file
   const steps = [
     "Please provide the customer's name who wants to claim.",
-    "Please provide the incident date (YYYY-MM-DD).",
-    "Please provide the treatment date (YYYY-MM-DD).",
+    "Please provide the incident date.",
+    "Please provide the treatment date.",
     "Please describe what happened.",
     "Please describe the treatment you received.",
     "Please provide the treatment money amount.",
     "Checking your policy coverage to see if this claim might be covered...",
     "Please provide the hospital name and address (separate name and location by a comma).",
     "Please provide the doctor's name and contact (separate name and phone by a comma).",
+    "Please upload your supporting documents (select file).",
     "Generating your claim file..."
   ];
 
-  // Update prompt when step changes.
+  // Update prompt on step change.
   useEffect(() => {
     if (step === 6) {
       checkPolicyCoverage();
@@ -47,24 +62,23 @@ function ClaimChatbot({ onClaimComplete, initialPolicyData }) {
     }
   }, [step]);
 
-  // (Optional) Simulate a Gemini API call for policy coverage check.
+  // (Optional) Simulated Gemini API call for coverage check.
   const checkPolicyCoverage = async () => {
     setLoadingPrompt(true);
-    // Simulated output from Gemini API call.
+    // Simulate a Gemini API response.
     const simulatedOutput =
-      "Covered. The claim is for $200. The treatment is within the policy limits.";
+      "Covered. The claim is for $" + treatmentAmount + ". The treatment is within the policy limits.";
     setCoverageCheck(simulatedOutput);
     setChatbotPrompt(`Policy Coverage Result: ${simulatedOutput}. If you wish to continue, click "Next".`);
     setLoadingPrompt(false);
   };
 
-  // Generate a formatted claim summary using date-fns for date formatting.
+  // Generate a formatted claim summary.
   const generateClaimSummary = async () => {
     setLoadingPrompt(true);
-    // Format the current date.
     const currentDate = format(new Date(), "MMMM d, yyyy");
 
-    // Create a Markdown formatted claim summary.
+    // Build a Markdown formatted summary.
     const formattedSummary = `
 **Claim ID:** (To be assigned by Claims Department)
 
@@ -98,15 +112,18 @@ function ClaimChatbot({ onClaimComplete, initialPolicyData }) {
 * **Justification:** ${coverageCheck}
 * **Coverage Details:** Based on the treatment amount of ${treatmentAmount}, the services fall within the coverage limits.
 
-**VI. Recommendation:**
+**VI. Supporting Document:**
+
+* ${supportingDocUrl ? `[View Document](${supportingDocUrl})` : "No document provided."}
+
+**VII. Recommendation:**
 
 * **Recommended Action:** ${coverageCheck.includes("Covered") ? "Process claim for reimbursement." : "Further review required."}
 * **Notes:** Verify provider credentials. Confirm specific services rendered and applicable policy benefits.
 
 **Disclaimer:** This summary is based on the information provided and is subject to verification and final approval by the Claims Department.
     `;
-
-    // Pass the formatted summary along with other claim details to the parent component.
+    // Pass the formatted summary and data back.
     onClaimComplete({
       customerName,
       incidentDate,
@@ -118,18 +135,17 @@ function ClaimChatbot({ onClaimComplete, initialPolicyData }) {
       hospitalDetails,
       doctorDetails,
       claimSummary: formattedSummary,
+      documentUrl: supportingDocUrl, // Save the URL from Cloudinary.
     });
     setChatbotPrompt("Claim summary generated and submitted!");
     setLoadingPrompt(false);
   };
 
-  // Handle user input for each step.
+  // Handle text input for steps (except file upload step).
   const handleSubmit = (e) => {
     e.preventDefault();
     const input = e.target.elements.userInput.value.trim();
     if (!input) return;
-
-    // Save input based on current step.
     switch (step) {
       case 0:
         setCustomerName(input);
@@ -162,30 +178,62 @@ function ClaimChatbot({ onClaimComplete, initialPolicyData }) {
     setStep((prev) => prev + 1);
   };
 
+  // Handle file upload at step 9.
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setLoadingPrompt(true);
+    try {
+      // Call your Cloudinary function.
+      const secureUrl = await uploadFileToCloudinary(file);
+      setSupportingDocUrl(secureUrl);
+      setChatbotPrompt("Supporting document uploaded successfully. Click Next to continue.");
+    } catch (error) {
+      console.error("Upload failed:", error);
+      setChatbotPrompt("File upload failed. Please try again.");
+    }
+    setLoadingPrompt(false);
+  };
+
   return (
     <div className="p-4">
       <div className="mb-4 p-4 bg-gray-100 rounded">
         <p>{loadingPrompt ? "Loading..." : chatbotPrompt}</p>
       </div>
-      {step < steps.length - 1 && (
-        <form onSubmit={handleSubmit} className="flex space-x-2">
-          <input
-            type="text"
-            name="userInput"
-            placeholder="Type your answer..."
-            className="flex-grow p-2 border rounded"
-            disabled={loadingPrompt}
-          />
+      {/* For file upload step (step 9), render file input */}
+      {step === 9 ? (
+        <div className="flex space-x-2">
+          <input type="file" name="docFile" onChange={handleFileUpload} />
           <button
-            type="submit"
-            disabled={loadingPrompt}
+            onClick={() => setStep((prev) => prev + 1)}
+            disabled={loadingPrompt || !supportingDocUrl}
             className="px-4 py-2 bg-primary-600 text-white rounded"
           >
             Next
           </button>
-        </form>
+        </div>
+      ) : (
+        // Render text-input form for other steps.
+        step < steps.length - 1 && (
+          <form onSubmit={handleSubmit} className="flex space-x-2">
+            <input
+              type="text"
+              name="userInput"
+              placeholder="Type your answer..."
+              className="flex-grow p-2 border rounded"
+              disabled={loadingPrompt}
+            />
+            <button
+              type="submit"
+              disabled={loadingPrompt}
+              className="px-4 py-2 bg-primary-600 text-white rounded"
+            >
+              Next
+            </button>
+          </form>
+        )
       )}
-      {/* Special case for step 6 (policy coverage call) */}
+      {/* Special case: for step 6 (coverage check), allow a separate Next button */}
       {step === 6 && (
         <button
           onClick={() => setStep((prev) => prev + 1)}

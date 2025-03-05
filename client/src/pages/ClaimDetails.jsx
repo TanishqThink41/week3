@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
+import { jsPDF } from "jspdf";
 import {
   FaArrowLeft,
   FaDownload,
-  FaPrint,
-  FaEnvelope,
-  FaVideo,
+  FaFile,
   FaCheckCircle,
   FaSpinner,
   FaExclamationTriangle,
@@ -51,12 +50,13 @@ function ClaimDetails() {
         // Transform API data to match the component's expected format
         const transformedClaim = {
           id: claimData.id,
-          type: "Health Insurance", // This would come from the policy type
+          type: "Health Insurance", // This would ideally come from the policy type
           date: new Date(claimData.created_at).toISOString().split("T")[0],
           status: claimData.status,
-          // Use the amount from the API if available, otherwise use a default value
-          amount: claimData.amount || claimData.estimated_amount || 1250.0,
-          totalCost: claimData.total_cost || 1500.0,
+          // Use treatment_money from API if available; otherwise use a default value
+          amount: claimData.treatment_money
+            ? parseFloat(claimData.treatment_money)
+            : 1250.0,
           description: claimData.cause,
           policyNumber: claimData.policy_number,
           policyProvider: claimData.policy_provider,
@@ -68,6 +68,7 @@ function ClaimDetails() {
           claimDetails: claimData.claim_details,
           timeline: claimData.timeline,
           treatmentDate: claimData.treatment_date,
+          documents: claimData.documents,
         };
 
         setClaim(transformedClaim);
@@ -81,6 +82,69 @@ function ClaimDetails() {
     fetchClaimDetails();
   }, [id]);
 
+  // PDF download handler using jsPDF
+  const handleDownloadPDF = () => {
+    if (!claim) return;
+    const doc = new jsPDF();
+
+    // Header
+    doc.setFontSize(16);
+    doc.text(`Claim Summary`, 20, 20);
+
+    // Claim information
+    doc.setFontSize(12);
+    doc.text(`Claim ID: ${claim.id}`, 20, 30);
+    doc.text(`Policy Number: ${claim.policyNumber}`, 20, 40);
+    doc.text(`Policy Provider: ${claim.policyProvider}`, 20, 50);
+    doc.text(`Policy Holder: ${claim.policyHolderName}`, 20, 60);
+    doc.text(
+      `Incident Date: ${new Date(claim.incidentDate).toLocaleDateString()}`,
+      20,
+      70
+    );
+    doc.text(
+      `Treatment Date: ${new Date(claim.treatmentDate).toLocaleDateString()}`,
+      20,
+      80
+    );
+    doc.text(`Claimed Amount: $${claim.amount.toFixed(2)}`, 20, 90);
+    doc.text(`Status: ${claim.status}`, 20, 100);
+
+    // Descriptions/details
+    doc.text(`Incident Description:`, 20, 110);
+    doc.text(claim.incidentDescription || "", 20, 120, { maxWidth: 170 });
+    doc.text(`Claim Details:`, 20, 140);
+    doc.text(claim.claimDetails || "", 20, 150, { maxWidth: 170 });
+
+    // Timeline
+    let y = 170;
+    doc.text("Timeline:", 20, y);
+    claim.timeline.forEach((event) => {
+      y += 10;
+      doc.text(`${event.date} - ${event.action} (${event.actor})`, 20, y);
+    });
+
+    // Trigger the download
+    doc.save(`claim_summary_${claim.id}.pdf`);
+  };
+
+  // Supporting document download handler
+  const handleDownloadDocument = () => {
+    if (claim.documents && claim.documents.length > 0) {
+      const documentUrl = claim.documents[0].file_path;
+      const link = document.createElement("a");
+      link.href = documentUrl;
+      // Adjust filename and extension based on file type
+      link.download = `supporting_doc_${claim.documents[0].id}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      console.error("No supporting document available.");
+    }
+  };
+
+  // Helpers for status icons and classes based on claim status
   const getStatusIcon = (status) => {
     switch (status) {
       case "approved":
@@ -135,12 +199,9 @@ function ClaimDetails() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center py-16">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Claim Not Found
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Claim Not Found</h2>
           <p className="text-gray-600 mb-4">
-            The claim you're looking for doesn't exist or you don't have
-            permission to view it.
+            The claim you're looking for doesn't exist or you don't have permission to view it.
           </p>
           <Link to="/dashboard" className="btn btn-primary">
             Back to Dashboard
@@ -153,10 +214,7 @@ function ClaimDetails() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6">
-        <Link
-          to="/dashboard"
-          className="inline-flex items-center text-primary-600 hover:text-primary-700"
-        >
+        <Link to="/dashboard" className="inline-flex items-center text-primary-600 hover:text-primary-700">
           <FaArrowLeft className="mr-2" />
           Back to Dashboard
         </Link>
@@ -164,19 +222,13 @@ function ClaimDetails() {
 
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Claim #{claim.id}
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-900">Claim #{claim.id}</h1>
           <p className="text-gray-600">
             {claim.type} - {new Date(claim.date).toLocaleDateString()}
           </p>
         </div>
         <div className="mt-4 md:mt-0">
-          <span
-            className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusClass(
-              claim.status
-            )}`}
-          >
+          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusClass(claim.status)}`}>
             {getStatusIcon(claim.status)}
             <span className="ml-2">{getStatusText(claim.status)}</span>
           </span>
@@ -191,88 +243,43 @@ function ClaimDetails() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500">
-                    Policy Number
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {claim.policyNumber}
-                  </p>
+                  <h3 className="text-sm font-medium text-gray-500">Policy Number</h3>
+                  <p className="mt-1 text-sm text-gray-900">{claim.policyNumber}</p>
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500">
-                    Insurance Provider
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {claim.policyProvider}
-                  </p>
+                  <h3 className="text-sm font-medium text-gray-500">Insurance Provider</h3>
+                  <p className="mt-1 text-sm text-gray-900">{claim.policyProvider}</p>
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500">
-                    Policy Holder
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {claim.policyHolderName}
-                  </p>
+                  <h3 className="text-sm font-medium text-gray-500">Policy Holder</h3>
+                  <p className="mt-1 text-sm text-gray-900">{claim.policyHolderName}</p>
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500">
-                    Claim Amount
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-900">
-                    ${claim.amount.toFixed(2)}
-                  </p>
+                  <h3 className="text-sm font-medium text-gray-500">Claim Amount</h3>
+                  <p className="mt-1 text-sm text-gray-900">${claim.amount.toFixed(2)}</p>
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500">
-                    Total Cost
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-900">
-                    ${claim.totalCost.toFixed(2)}
-                  </p>
+                  <h3 className="text-sm font-medium text-gray-500">Incident Date</h3>
+                  <p className="mt-1 text-sm text-gray-900">{new Date(claim.incidentDate).toLocaleDateString()}</p>
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500">
-                    Incident Date
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {new Date(claim.incidentDate).toLocaleDateString()}
-                  </p>
+                  <h3 className="text-sm font-medium text-gray-500">Treatment Date</h3>
+                  <p className="mt-1 text-sm text-gray-900">{new Date(claim.treatmentDate).toLocaleDateString()}</p>
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500">
-                    Treatment Date
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {new Date(claim.treatmentDate).toLocaleDateString()}
-                  </p>
+                  <h3 className="text-sm font-medium text-gray-500">Submission Date</h3>
+                  <p className="mt-1 text-sm text-gray-900">{new Date(claim.date).toLocaleDateString()}</p>
                 </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">
-                    Submission Date
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {new Date(claim.date).toLocaleDateString()}
-                  </p>
-                </div>
-                
               </div>
 
               <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-500 mb-2">
-                  Incident Description
-                </h3>
-                <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded">
-                  {claim.incidentDescription}
-                </p>
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Incident Description</h3>
+                <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded">{claim.incidentDescription}</p>
               </div>
 
               <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-2">
-                  Claim Details
-                </h3>
-                <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded">
-                  {claim.claimDetails}
-                </p>
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Claim Details</h3>
+                <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded">{claim.claimDetails}</p>
               </div>
             </div>
           </div>
@@ -280,7 +287,6 @@ function ClaimDetails() {
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="p-6">
               <h2 className="text-xl font-semibold mb-4">Claim Timeline</h2>
-
               <div className="flow-root">
                 <ul className="-mb-8">
                   {claim.timeline.map((event, index) => (
@@ -289,10 +295,7 @@ function ClaimDetails() {
                         {index !== claim.timeline.length - 1 && (
                           <span
                             className={`absolute top-4 left-4 -ml-px h-full w-0.5 ${
-                              index <
-                              claim.timeline.findIndex(
-                                (e) => e.completed === false
-                              )
+                              index < claim.timeline.findIndex((e) => e.completed === false)
                                 ? "bg-primary-400"
                                 : "bg-gray-200"
                             }`}
@@ -329,9 +332,7 @@ function ClaimDetails() {
                               </span>
                             ) : (
                               <span className="h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white bg-gray-200">
-                                <span className="text-sm font-medium text-gray-500">
-                                  {index + 1}
-                                </span>
+                                <span className="text-sm font-medium text-gray-500">{index + 1}</span>
                               </span>
                             )}
                           </div>
@@ -352,9 +353,7 @@ function ClaimDetails() {
                               >
                                 {event.action}
                                 {event.completed === false && (
-                                  <span className="ml-2 text-xs text-gray-400">
-                                    (Expected)
-                                  </span>
+                                  <span className="ml-2 text-xs text-gray-400">(Expected)</span>
                                 )}
                               </p>
                             </div>
@@ -362,9 +361,7 @@ function ClaimDetails() {
                               <p>
                                 {new Date(event.date).toLocaleDateString()}
                                 {event.completed === false && (
-                                  <span className="ml-1 text-xs text-gray-400">
-                                    (Est.)
-                                  </span>
+                                  <span className="ml-1 text-xs text-gray-400">(Est.)</span>
                                 )}
                               </p>
                               <p className="text-xs">{event.actor}</p>
@@ -384,23 +381,20 @@ function ClaimDetails() {
           <div className="bg-white rounded-lg shadow overflow-hidden mb-6">
             <div className="p-6">
               <h2 className="text-xl font-semibold mb-4">Actions</h2>
-
               <div className="space-y-3">
-                <button className="btn btn-outline w-full flex items-center justify-center">
+                <button
+                  className="btn btn-outline w-full flex items-center justify-center"
+                  onClick={handleDownloadPDF}
+                >
                   <FaDownload className="mr-2" />
                   Download Claim
                 </button>
-                <button className="btn btn-outline w-full flex items-center justify-center">
-                  <FaPrint className="mr-2" />
-                  Print Claim
-                </button>
-                <button className="btn btn-outline w-full flex items-center justify-center">
-                  <FaEnvelope className="mr-2" />
-                  Email Claim
-                </button>
-                <button className="btn btn-primary w-full flex items-center justify-center">
-                  <FaVideo className="mr-2" />
-                  Video Consultation
+                <button
+                  className="btn btn-outline w-full flex items-center justify-center"
+                  onClick={handleDownloadDocument}
+                >
+                  <FaFile className="mr-2" />
+                  Show Supporting Docs
                 </button>
               </div>
             </div>
@@ -409,16 +403,11 @@ function ClaimDetails() {
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="p-6">
               <h2 className="text-xl font-semibold mb-4">Need Help?</h2>
-
               <p className="text-sm text-gray-600 mb-4">
-                If you have questions about your claim or need assistance, our
-                support team is here to help.
+                If you have questions about your claim or need assistance, our support team is here to help.
               </p>
-
               <div className="space-y-3">
-                <button className="btn btn-outline w-full">
-                  Contact Support
-                </button>
+                <button className="btn btn-outline w-full">Contact Support</button>
                 <button className="btn btn-outline w-full">FAQ</button>
               </div>
             </div>
