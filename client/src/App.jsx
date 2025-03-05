@@ -13,6 +13,7 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import NewClaim from './pages/NewClaim'
 import ClaimDetails from './pages/ClaimDetails'
+import AddPolicy from './pages/AddPolicy'
 import NotFound from './pages/NotFound'
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="new-claim" element={<NewClaim />} />
           <Route path="claims/:id" element={<ClaimDetails />} />
+          <Route path="add-policy" element={<AddPolicy />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

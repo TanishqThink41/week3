@@ -6,7 +6,7 @@ import Button from '../components/common/Button'
 
 function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
-  const { user, logout: authLogout } = useAuth()
+  const { user, isAuthenticated, isLoading, logout: authLogout } = useAuth()
   const navigate = useNavigate()
 
   const toggleMenu = () => {
@@ -30,7 +30,8 @@ function Navbar() {
           
           {/* Desktop menu */}
           <div className="hidden md:flex md:items-center md:space-x-4">
-            {user ? (
+            {/* Don't show menu items while authentication is loading */}
+            {!isLoading && isAuthenticated ? (
               <>
             <Link to="/" className="px-3 py-2 rounded-md text-md font-medium text-gray-700 hover:text-primary-600">
               Home
@@ -78,7 +79,7 @@ function Navbar() {
             >
               Home
             </Link>
-            {user ? (
+            {!isLoading && isAuthenticated ? (
               <>
                 <Link
                   to="/dashboard"

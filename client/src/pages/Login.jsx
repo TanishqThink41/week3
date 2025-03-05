@@ -40,14 +40,13 @@ function Login() {
       
       const data = await response.json()
       
-      // Store token in localStorage
-      localStorage.setItem('token', data.access)
+      // Store refresh token in localStorage if available
       if (data.refresh) {
         localStorage.setItem('refreshToken', data.refresh)
       }
       
-      // Set the user in auth context
-      login({ email: values.email })
+      // Set the user in auth context with token
+      login({ email: values.email }, data.access)
       
       toast.success('Login successful!')
       navigate('/dashboard')

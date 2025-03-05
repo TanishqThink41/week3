@@ -50,8 +50,8 @@ class ClaimSerializer(serializers.ModelSerializer):
     policy_number = serializers.CharField(source='policy.policy_number', read_only=True)
     policy_provider = serializers.SerializerMethodField()
     policy_holder_name = serializers.SerializerMethodField()
-    incident_date = serializers.DateTimeField(source='treatment_date')
-    incident_description = serializers.CharField(source='cause')
+    incident_date = serializers.DateTimeField(source='treatment_date', required=False)
+    incident_description = serializers.CharField(source='cause', required=False)
     claim_details = serializers.SerializerMethodField()
     timeline = serializers.SerializerMethodField()
     
@@ -59,59 +59,94 @@ class ClaimSerializer(serializers.ModelSerializer):
         model = Claim
         fields = ['id', 'treatment', 'treatment_date', 'cause', 'status', 'created_at', 'updated_at',
                   'documents', 'policy_number', 'policy_provider', 'policy_holder_name', 
-                  'incident_date', 'incident_description', 'claim_details', 'timeline']
+                  'incident_date', 'incident_description', 'claim_details', 'timeline', 'policy']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'documents', 'policy_number', 
+                           'policy_provider', 'policy_holder_name', 'claim_details', 'timeline']
     
     def get_policy_provider(self, obj):
         # This would typically come from policy.provider or similar field
         # For now returning a placeholder
-        return "State Farm"
+        return "Health Insurance Provider"
     
     def get_policy_holder_name(self, obj):
         return f"{obj.user.first_name} {obj.user.last_name}"
     
     def get_claim_details(self, obj):
-        return f"Treatment: {obj.treatment}. {obj.cause if obj.cause else ''}"
+        return f"Health Insurance Claim: {obj.cause if obj.cause else 'Medical treatment'}"
     
     def get_timeline(self, obj):
+        import datetime
+        from django.utils import timezone
+        
+        # Start with the actual submission date
+        submission_date = obj.created_at
+        
         timeline = [
             {
-                'date': obj.created_at.strftime('%Y-%m-%d'),
+                'date': submission_date.strftime('%Y-%m-%d'),
                 'action': 'Claim submitted',
-                'actor': 'You'
+                'actor': 'You',
+                'completed': True
             },
         ]
         
-        # Add review entry after submission
-        review_date = obj.created_at.replace(day=obj.created_at.day + 1)
+        # Review typically happens 1 day after submission
+        review_date = submission_date + datetime.timedelta(days=1)
+        review_completed = True  # Review is always completed
+        
         timeline.append({
             'date': review_date.strftime('%Y-%m-%d'),
             'action': 'Claim received and under review',
-            'actor': 'Insurance Company'
+            'actor': 'Insurance Company',
+            'completed': review_completed
         })
         
-        # Add status-specific entries
+        # Decision date is typically 3 days after submission
+        decision_date = submission_date + datetime.timedelta(days=3)
+        
+        # If the claim has been updated (decision made), use that date instead
+        if obj.updated_at and obj.updated_at > submission_date and (obj.status == 'approved' or obj.status == 'rejected'):
+            decision_date = obj.updated_at
+            decision_completed = True
+        else:
+            # If decision date is in the future, show future date
+            now = timezone.now()
+            decision_completed = decision_date <= now
+            if not decision_completed:
+                # For pending decisions in the future, use the expected date
+                pass
+        
         if obj.status == 'approved':
-            approved_date = obj.updated_at.strftime('%Y-%m-%d')
             timeline.append({
-                'date': approved_date,
+                'date': decision_date.strftime('%Y-%m-%d'),
                 'action': 'Claim approved',
-                'actor': 'Insurance Company'
+                'actor': 'Insurance Company',
+                'completed': decision_completed
             })
             
-            # Add payment processed 2 days after approval
-            import datetime
-            payment_date = (obj.updated_at + datetime.timedelta(days=2)).strftime('%Y-%m-%d')
+            # Payment processed 2 days after approval
+            payment_date = decision_date + datetime.timedelta(days=2)
+            payment_completed = payment_date <= timezone.now()
+            
             timeline.append({
-                'date': payment_date,
+                'date': payment_date.strftime('%Y-%m-%d'),
                 'action': 'Payment processed',
-                'actor': 'Insurance Company'
+                'actor': 'Insurance Company',
+                'completed': payment_completed
             })
         elif obj.status == 'rejected':
-            rejected_date = obj.updated_at.strftime('%Y-%m-%d')
             timeline.append({
-                'date': rejected_date,
+                'date': decision_date.strftime('%Y-%m-%d'),
                 'action': 'Claim rejected',
-                'actor': 'Insurance Company'
+                'actor': 'Insurance Company',
+                'completed': decision_completed
+            })
+        else:  # pending
+            timeline.append({
+                'date': decision_date.strftime('%Y-%m-%d'),
+                'action': 'Claim decision pending',
+                'actor': 'Insurance Company',
+                'completed': False  # Always false for pending
             })
         
         return timeline
@@ -121,9 +156,10 @@ class PolicySerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Policy
-        fields = ['id', 'policy_number', 'coverage_details', 'exclusions', 'start_date', 'end_date', 'claims']
+        fields = ['id', 'policy_number', 'coverage_details', 'exclusions', 'document_url', 'start_date', 'end_date', 'claims']
 
 class MedicalHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = MedicalHistory
         fields = ['id', 'condition', 'diagnosis_date', 'treatment', 'created_at']
+        read_only_fields = ['id', 'created_at']

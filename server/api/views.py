@@ -20,6 +20,9 @@ class PolicyViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         return Policy.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 # Create a viewset for the MedicalHistory model
 class MedicalHistoryViewSet(viewsets.ModelViewSet):
@@ -28,6 +31,9 @@ class MedicalHistoryViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         return MedicalHistory.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 # Create a viewset for the Claim model
 class ClaimViewSet(viewsets.ModelViewSet):
@@ -36,6 +42,9 @@ class ClaimViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         return Claim.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 # Create a simple API view for testing
 @api_view(['GET'])

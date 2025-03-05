@@ -82,7 +82,7 @@ function Footer() {
           </div>
         </div>
         
-        <div className="border-t border-gray-700 mt-8 pt-8 text-center text-gray-300 text-lg">
+        <div className="border-t border-gray-700 mt-8 pt-8 text-center text-gray-300 text-md">
           <p>&copy; {currentYear} ClaimGenie. All rights reserved.</p>
         </div>
       </div>

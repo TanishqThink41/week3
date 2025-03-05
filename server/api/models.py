@@ -25,6 +25,7 @@ class Policy(models.Model):
     exclusions = models.JSONField()
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
+    document_url = models.URLField(blank=True, null=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='policies')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
