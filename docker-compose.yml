@@ -1,48 +1,44 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  postgres:
+  db:
     image: postgres:15
-    container_name: postgres
-    restart: always
-    ports:
-      - "5432:5432"
+    container_name: custom_postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: app_db
+      POSTGRES_DB: mydatabase
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
 
   backend:
     build:
       context: ./server
       dockerfile: Dockerfile
-    container_name: django_backend
-    restart: always
+    image: custom_backend:latest  # <-- Custom image name for your backend
+    container_name: custom_backend_container  # <-- Custom container name for backend
+    environment:
+      DEBUG: "1"
+      DATABASE_HOST: db
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: mydatabase
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+    depends_on:
+      - db
     ports:
       - "8000:8000"
-    depends_on:
-      - postgres
-    environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/app_db
-      - SECRET_KEY=django-insecure-key-for-development-only
-      - DEBUG=True
-      - ALLOWED_HOSTS=localhost,127.0.0.1
 
   frontend:
     build:
       context: ./client
       dockerfile: Dockerfile
-    container_name: react_frontend
-    restart: always
+    image: custom_frontend:latest  # <-- Custom image name for your frontend
+    container_name: custom_frontend_container  # <-- Custom container name for frontend
     ports:
       - "5173:5173"
-    depends_on:
-      - backend
-    volumes:
-      - ./client:/app
-      - /app/node_modules
 
 volumes:
   postgres_data:
