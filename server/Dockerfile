@@ -1,8 +1,5 @@
 FROM python:3.10-slim
 
-# Disable interactive prompts during apt installation
-ENV DEBIAN_FRONTEND=noninteractive
-
 # Install Tesseract OCR and clean up apt cache for a smaller image
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
