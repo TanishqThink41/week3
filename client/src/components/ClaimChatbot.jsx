@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { uploadFileToCloudinary } from "../utils/cloudinary";
 import axios from "axios";
+import ReactMarkdown from 'react-markdown';
+
 
 function ClaimChatbot({ onClaimComplete, initialPolicyData }) {
   // Track the current conversation step.
@@ -112,7 +114,8 @@ Incident Description: ${incidentDescription} and text extracted from supporting 
 Determine whether this claim will be covered.
 If covered, reply with "Covered" and a brief explanation.
 If partially covered, reply with "Partially Covered" and a brief explanation.
-If not covered, reply with "Not Covered" and a brief explanation.`;
+If not covered, reply with "Not Covered" and a brief explanation.
+give answer with proper no.`;
     
     const technicalResult = await callGemini(coveragePrompt);
     if (technicalResult) {
@@ -262,7 +265,7 @@ If not covered, reply with "Not Covered" and a brief explanation.`;
   return (
     <div className="p-4">
       <div className="mb-4 p-4 bg-gray-100 rounded">
-        <p>{loadingPrompt ? "Loading..." : chatbotPrompt}</p>
+        <p>{loadingPrompt ? "Loading..." : <ReactMarkdown>{chatbotPrompt}</ReactMarkdown>}</p>
       </div>
       {/* For file upload step (step 6), render file input */}
       {step === 6 ? (
