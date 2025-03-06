@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { uploadFileToCloudinary } from "../utils/cloudinary";  // Ensure this file exists
+import { uploadFileToCloudinary } from "../utils/cloudinary"; // Ensure this file exists
 
 function ClaimChatbot({ onClaimComplete, initialPolicyData }) {
   // Track the current conversation step.
@@ -32,7 +32,7 @@ function ClaimChatbot({ onClaimComplete, initialPolicyData }) {
   // 3. Incident description
   // 4. Treatment description
   // 5. Treatment money amount (claim amount)
-  // 6. Policy coverage check (simulated Gemini API call)
+  // 6. Policy coverage check (actual Gemini API call; will then be simplified)
   // 7. Hospital details
   // 8. Doctor details
   // 9. Supporting document upload
@@ -43,13 +43,50 @@ function ClaimChatbot({ onClaimComplete, initialPolicyData }) {
     "Please provide the treatment date.",
     "Please describe what happened.",
     "Please describe the treatment you received.",
-    "Please provide the treatment money amount.",
-    "Checking your policy coverage to see if this claim might be covered...",
+    "Please provide the treatment money amount(in Dollars).",
+    "Determining policy coverage. Please wait...",
     "Please provide the hospital name and address (separate name and location by a comma).",
     "Please provide the doctor's name and contact (separate name and phone by a comma).",
     "Please upload your supporting documents (select file).",
     "Generating your claim file..."
   ];
+
+  // Function to call Gemini API using your provided API key.
+  const callGemini = async (promptText) => {
+    const key = "AIzaSyDCuedtf9Z87HdVac-YNB2pNnPH2CDOV2k";
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`;
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: promptText }]
+            }
+          ]
+        })
+      });
+      if (!response.ok) {
+        console.error("Gemini API response error", response.status);
+        return null;
+      }
+      const data = await response.json();
+      // Extract the formatted text from the first candidate.
+      const output =
+        data.candidates &&
+        data.candidates.length > 0 &&
+        data.candidates[0].content &&
+        data.candidates[0].content.parts &&
+        data.candidates[0].content.parts.length > 0
+          ? data.candidates[0].content.parts[0].text
+          : null;
+      return output;
+    } catch (error) {
+      console.error("Error calling Gemini API:", error);
+      return null;
+    }
+  };
 
   // Update prompt on step change.
   useEffect(() => {
@@ -62,14 +99,29 @@ function ClaimChatbot({ onClaimComplete, initialPolicyData }) {
     }
   }, [step]);
 
-  // (Optional) Simulated Gemini API call for coverage check.
+  // Call Gemini API for actual policy coverage check, then simplify the result.
   const checkPolicyCoverage = async () => {
     setLoadingPrompt(true);
-    // Simulate a Gemini API response.
-    const simulatedOutput =
-      "Covered. The claim is for $" + treatmentAmount + ". The treatment is within the policy limits.";
-    setCoverageCheck(simulatedOutput);
-    setChatbotPrompt(`Policy Coverage Result: ${simulatedOutput}. If you wish to continue, click "Next".`);
+    const coveragePrompt = `Based on the following policy coverage details: ${JSON.stringify(
+      initialPolicyData.coverage_details
+    )} and the following data:
+Treatment Amount: ${treatmentAmount}
+Incident Description: ${incidentDescription}
+Determine whether this claim will be covered.
+If covered, reply with "Covered" and a brief explanation.
+If not covered, reply with "Not Covered" and a brief explanation.`;
+    
+    const technicalResult = await callGemini(coveragePrompt);
+    if (technicalResult) {
+      // Now simplify the explanation.
+      const simplifyPrompt = "Simplify the following explanation in simple, user-friendly language with short sentences, so that the customer easily understands: " + technicalResult;
+      const simpleResult = await callGemini(simplifyPrompt);
+      const finalResult = simpleResult || technicalResult;
+      setCoverageCheck(finalResult);
+      setChatbotPrompt(`Policy Coverage Result: ${finalResult} If you wish to continue, click "Next".`);
+    } else {
+      setChatbotPrompt("Failed to determine policy coverage, please try again later.");
+    }
     setLoadingPrompt(false);
   };
 
@@ -110,7 +162,7 @@ function ClaimChatbot({ onClaimComplete, initialPolicyData }) {
 
 * **Policy Coverage Check:** ${coverageCheck.includes("Covered") ? "Covered" : "Not Covered"}
 * **Justification:** ${coverageCheck}
-* **Coverage Details:** Based on the treatment amount of ${treatmentAmount}, the services fall within the coverage limits.
+* **Coverage Details:** Based on the treatment amount of ${treatmentAmount}, the services fall within the policy limits.
 
 **VI. Supporting Document:**
 
@@ -135,7 +187,7 @@ function ClaimChatbot({ onClaimComplete, initialPolicyData }) {
       hospitalDetails,
       doctorDetails,
       claimSummary: formattedSummary,
-      documentUrl: supportingDocUrl, // Save the URL from Cloudinary.
+      documentUrl: supportingDocUrl, // Save the Cloudinary URL.
     });
     setChatbotPrompt("Claim summary generated and submitted!");
     setLoadingPrompt(false);
@@ -184,7 +236,6 @@ function ClaimChatbot({ onClaimComplete, initialPolicyData }) {
     if (!file) return;
     setLoadingPrompt(true);
     try {
-      // Call your Cloudinary function.
       const secureUrl = await uploadFileToCloudinary(file);
       setSupportingDocUrl(secureUrl);
       setChatbotPrompt("Supporting document uploaded successfully. Click Next to continue.");

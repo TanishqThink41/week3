@@ -192,7 +192,7 @@ function NewClaim() {
                 </option>
                 {policies.map((policy) => (
                   <option key={policy.id} value={policy.policy_number}>
-                    {policy.policy_number} - {policy.provider_name}
+                    {policy.policy_number}
                   </option>
                 ))}
               </select>

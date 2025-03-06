@@ -11,5 +11,5 @@ COPY . .
 
 EXPOSE 8000
 
-# Run migrations and start server
-CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]
+# Run Gunicorn instead of Django's runserver
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "backend.wsgi:application"]
