@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { uploadFileToCloudinary } from "../utils/cloudinary"; // Ensure this file exists
+import { uploadFileToCloudinary } from "../utils/cloudinary";
+import axios from "axios";
 
 function ClaimChatbot({ onClaimComplete, initialPolicyData }) {
   // Track the current conversation step.
@@ -18,8 +19,8 @@ function ClaimChatbot({ onClaimComplete, initialPolicyData }) {
   const [coverageCheck, setCoverageCheck] = useState("");
   const [hospitalDetails, setHospitalDetails] = useState("");
   const [doctorDetails, setDoctorDetails] = useState("");
-  // New state for supporting document URL.
   const [supportingDocUrl, setSupportingDocUrl] = useState("");
+  const [extractedText, setExtractedText] = useState("Not Provided");
 
   // Prompt message and loading state.
   const [chatbotPrompt, setChatbotPrompt] = useState("");
@@ -44,10 +45,10 @@ function ClaimChatbot({ onClaimComplete, initialPolicyData }) {
     "Please describe what happened.",
     "Please describe the treatment you received.",
     "Please provide the treatment money amount(in Dollars).",
+    "Please upload your supporting document (select file).",
     "Determining policy coverage. Please wait...",
     "Please provide the hospital name and address (separate name and location by a comma).",
     "Please provide the doctor's name and contact (separate name and phone by a comma).",
-    "Please upload your supporting documents (select file).",
     "Generating your claim file..."
   ];
 
@@ -90,7 +91,7 @@ function ClaimChatbot({ onClaimComplete, initialPolicyData }) {
 
   // Update prompt on step change.
   useEffect(() => {
-    if (step === 6) {
+    if (step === 7) {
       checkPolicyCoverage();
     } else if (step === steps.length - 1) {
       generateClaimSummary();
@@ -102,13 +103,15 @@ function ClaimChatbot({ onClaimComplete, initialPolicyData }) {
   // Call Gemini API for actual policy coverage check, then simplify the result.
   const checkPolicyCoverage = async () => {
     setLoadingPrompt(true);
+    console.log(initialPolicyData.coverage_details, treatmentAmount, incidentDescription, extractedText)
     const coveragePrompt = `Based on the following policy coverage details: ${JSON.stringify(
       initialPolicyData.coverage_details
-    )} and the following data:
+    )} , the following data(provided by user):
 Treatment Amount: ${treatmentAmount}
-Incident Description: ${incidentDescription}
+Incident Description: ${incidentDescription} and text extracted from supporting document: ${extractedText}
 Determine whether this claim will be covered.
 If covered, reply with "Covered" and a brief explanation.
+If partially covered, reply with "Partially Covered" and a brief explanation.
 If not covered, reply with "Not Covered" and a brief explanation.`;
     
     const technicalResult = await callGemini(coveragePrompt);
@@ -217,10 +220,10 @@ If not covered, reply with "Not Covered" and a brief explanation.`;
       case 5:
         setTreatmentAmount(input);
         break;
-      case 7:
+      case 8:
         setHospitalDetails(input);
         break;
-      case 8:
+      case 9:
         setDoctorDetails(input);
         break;
       default:
@@ -231,13 +234,23 @@ If not covered, reply with "Not Covered" and a brief explanation.`;
   };
 
   // Handle file upload at step 9.
-  const handleFileUpload = async (e) => {
+  const handleSupportingFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setLoadingPrompt(true);
     try {
       const secureUrl = await uploadFileToCloudinary(file);
       setSupportingDocUrl(secureUrl);
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await axios.post('http://localhost:8000/api/ocr/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      console.log(response.data.text);
+      setExtractedText(response.data.text);
       setChatbotPrompt("Supporting document uploaded successfully. Click Next to continue.");
     } catch (error) {
       console.error("Upload failed:", error);
@@ -251,10 +264,10 @@ If not covered, reply with "Not Covered" and a brief explanation.`;
       <div className="mb-4 p-4 bg-gray-100 rounded">
         <p>{loadingPrompt ? "Loading..." : chatbotPrompt}</p>
       </div>
-      {/* For file upload step (step 9), render file input */}
-      {step === 9 ? (
+      {/* For file upload step (step 6), render file input */}
+      {step === 6 ? (
         <div className="flex space-x-2">
-          <input type="file" name="docFile" onChange={handleFileUpload} />
+          <input type="file" name="docFile" onChange={handleSupportingFileUpload} />
           <button
             onClick={() => setStep((prev) => prev + 1)}
             disabled={loadingPrompt || !supportingDocUrl}
@@ -285,7 +298,7 @@ If not covered, reply with "Not Covered" and a brief explanation.`;
         )
       )}
       {/* Special case: for step 6 (coverage check), allow a separate Next button */}
-      {step === 6 && (
+      {step === 7 && (
         <button
           onClick={() => setStep((prev) => prev + 1)}
           disabled={loadingPrompt}

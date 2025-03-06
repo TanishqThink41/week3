@@ -1,3 +1,7 @@
+import pytesseract
+from PIL import Image
+from rest_framework.views import APIView
+
 from rest_framework import viewsets, status, generics, permissions
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
@@ -23,6 +27,21 @@ class PolicyViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+# OCR Extraction
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def ocr_api_view(request):
+    uploaded_file = request.FILES.get('image')
+    if not uploaded_file:
+        return Response({'error': 'No file uploaded'}, status=400)
+    
+    try:
+        image = Image.open(uploaded_file)
+        extracted_text = pytesseract.image_to_string(image)
+        return Response({'text': extracted_text}, status=200)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
 
 # Create a viewset for the MedicalHistory model
 class MedicalHistoryViewSet(viewsets.ModelViewSet):
