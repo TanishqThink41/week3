@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-*(bc@=dfti-m*i5*l&-e$jgxzo(dd^twcn6*%@bgx81heatngs
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -95,7 +95,7 @@ DATABASES = {
 #         'NAME': os.environ.get('POSTGRES_DB', 'app_db'),
 #         'USER': os.environ.get('POSTGRES_USER', 'postgres'),
 #         'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'postgres'),
-#         'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),  # Changed from 'postgres'
+#         'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
 #         'PORT': os.environ.get('POSTGRES_PORT', '5432'),
 #     }
 # }
@@ -134,6 +134,18 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
+
+# URL to serve static files
+STATIC_URL = 'static/'
+
+# Directory where Django looks for additional static files
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),  # Ensure this directory exists
+]
+
+# Directory where collectstatic will copy all static files
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
 
 STATIC_URL = 'static/'
 
